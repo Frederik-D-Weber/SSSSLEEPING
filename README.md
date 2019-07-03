@@ -6,7 +6,7 @@ We all together will collect the data and collaboratively create a paper as part
 <br><br>
 A large part of the work will occur during the two Summer School hands-on sessions (17:30-22:00 on Thursday and 16:00-18:00 on Friday). There, everyone will help to write a preregistration form on OSF, an early version of the manuscript, and the core of the analysis code. We will work on these in groups, and people are free to choose what they work on. Collaborative work will continue after the Summer Camp through the OSF and GitHub repositories and GoogleDocs.
 <br><br>
-Aside from investigating questions about sleep and memory, a large purpose of this paper is to work with open science tools and promote transparency in science. Accordingly, we have an OSF [page]() where all the data and code for the experiment are available, and we will preregister the study before running analyses.
+Aside from investigating questions about sleep and memory, a large purpose of this paper is to work with open science tools and promote transparency in science. Accordingly, we have an OSF [page](https://osf.io/52gy7/) where all the data and code for the experiment are available, and we will preregister the study before running analyses.
 
 All involved should be aware of the [Code of Conduct](CODE_OF_CONDUCT.md).
 
@@ -17,9 +17,9 @@ All involved should be aware of the [Code of Conduct](CODE_OF_CONDUCT.md).
 
 ### Overview of collected data
 - Sleep EEG/ZMax, 3x 8h nights
-- Daytime EEG/ZMax, 3x 2h lectures
+- Daytime EEG/ZMax, 4x 2h lectures
 - Morning questionnaires about night's sleep (e.g., mood, dreaming), 3x
-- Afternoon questionnaires about lecture content (e.g., personal relevance, prior knowledge on lecture content), 3x
+- Afternoon questionnaires about lecture content (e.g., prior knowledge on lecture content), 3x
 - Demographics form, 1x
 
 ### Example hypotheses
