@@ -1,20 +1,26 @@
-### Assignment groups
+### Assignment groupings
+
 
 1. **Complete OSF preregistration form.**
     1. All OSF preregistration forms follow the same outline. Build this outline in a separate text editor and then we can enter in the results as a group. Browse examples on [OSF registries](https://osf.io/registries) or a template [here](https://docs.google.com/document/d/1DaNmJEtBy04bq1l5OxS4JAscdZEkUGATURWwnBKLYxk/edit?pli=1) for building the form.
+    2. See the [description of the data](https://github.com/remrama/SSSSLEEPING#summary-of-collected-data) we will collect and the [example hypotheses](https://github.com/remrama/SSSSLEEPING#example-hypotheses) for a place to start.
+
 
 2. **Write Introduction section.**
     1. Brief description of the CN Sleep Summer Camp and the goal of this paper.
     2. **_Brief_** review of sleep and memory (e.g., does memory improve with sleep? what stages of sleep impact what kind of memories?)
     3. Paragraph about transparent and open source science.
-    4. What are the predictions we are making?
+    4. What are the predictions we are making? (talk to the preregistration group and see the [example hypotheses](https://github.com/remrama/SSSSLEEPING#example-hypotheses))
+
 
 3. **Write Methods section.**
     1. Who were the participants?
     2. What was the general procedure outline?
     3. What are the analyses being performed?
 
+
 4. **Write (empty) Results section.**
+
 
 5. **Write behavioral analysis code.**
     
@@ -22,6 +28,7 @@
 
     1. Sample participant data available [here]().
     2. This includes code for statistical analysis and visualizations.
+
 
 6. **Write sleep data analysis code.**
 
