@@ -8,5 +8,6 @@ A large part of the work will occur during the two Summer School hands-on sessio
 <br><br>
 Aside from investigating questions about sleep and memory, a large purpose of this paper is to work with open science tools and promote transparency in science. Accordingly, we have an OSF [page]() where all the data and code for the experiment are available, and we will preregister the study before running analyses.
 
+- Sign up to be included [here](https://docs.google.com/spreadsheets/d/1d6A584AjNLR_eP_UC7jrlLW5nkJukrm6Mhs0K7b_BEk/edit?usp=sharing).
 - Full description [here](https://dreslerlab.org/ssssleeping/).
 - OSF page with data, code, and writing [here](https://osf.io/52gy7/).
