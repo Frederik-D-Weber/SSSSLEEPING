@@ -1,0 +1,85 @@
+---
+title: "Simulated behavioural data"
+author: "Leonore Bovy"
+date: "July 3, 2019"
+output: html_document
+---
+
+# Data simulation: morning questionnaire
+
+```{r simulated data morning}
+morn_suvey_names <- c("2. Morning questionnaire Tuesday", "4. Morning questionnaire Wednesday", "6. Morning questionnaire Thursday")
+
+set.seed(100)
+sim_pp_id         <- rep(1:40, each=3) #120
+sim_survey_name   <- rep(morn_suvey_names, 40)
+sim_sleep_quality <- round(runif(120, -5, 5))
+sim_mood_morning  <- round(runif(120, -5, 5))
+sim_bed_time      <- paste(round(runif(120, 21, 23)), round(runif(120, 10, 59)), sep=":")
+sim_wake_time     <- paste(round(runif(120, 06, 11)), round(runif(120, 10, 59)), sep=":")
+sim_dream_yn      <- round(runif(120, 0, 1))
+sim_lucidity      <- round(runif(120, -5, 5))
+sim_zmax_battery  <- round(runif(120, 0, 1))
+sim_hours_in_bed  <- round(runif(120, 5, 10))
+
+sim_data_morn_quest <- data.frame(sim_pp_id, sim_survey_name, sim_sleep_quality, sim_mood_morning, sim_bed_time, sim_wake_time, sim_dream_yn, sim_lucidity, sim_zmax_battery,sim_hours_in_bed )
+
+sim_data_morn_quest$sim_lucidity[which(sim_data_morn_quest$sim_dream_yn == 0)] = NA
+```
+
+# Data simulation: lecture questionnaire
+
+```{r simulated datalecture}
+lec_suvey_names <- c("1. Lecture questionnaire Monday", "3. Lecture questionnaire Tuesday","5. Lecture questionnaire Wednesday", 
+                      "7. Lecture questionnaire Thursday", "8. Lecture questionnaire Friday")
+
+set.seed(100)
+sim_pp_id         <- rep(1:40, each=5) #200
+sim_survey_name   <- rep(lec_suvey_names, 40)
+sim_prior_know_1  <- round(runif(200, 0, 10))
+sim_prior_know_2  <- round(runif(200, 0, 10))
+sim_prior_know_3  <- round(runif(200, 0, 10))
+
+sim_data_lec_quest <- data.frame(sim_pp_id, sim_survey_name, sim_prior_know_1, sim_prior_know_2, sim_prior_know_3 )
+```
+
+
+# Data simulation: memory questionnaire
+
+```{r simulated data memory}
+mem_suvey_names <- "9. Memory questionnaire"
+
+set.seed(100)
+sim_pp_id         <- rep(1:40, each=1) #40
+sim_survey_name   <- rep(mem_suvey_names, 40)
+sim_mem_type_1    <- sample(seq(from = 0, to = 1, by = 0.5), size = 40, replace = TRUE)
+sim_mem_type_2    <- sample(seq(from = 0, to = 1, by = 0.5), size = 40, replace = TRUE)
+
+sim_data_mem_quest <- data.frame(sim_pp_id, sim_survey_name, sim_mem_type_1, sim_mem_type_2 )
+## 20 type_1 questions
+sim_data_mem_quest_2 <- cbind(sim_data_mem_quest, replicate(20,sim_data_mem_quest$sim_mem_type_1))
+colnames(sim_data_mem_quest_2)[5:24] <- paste("sim_mem_type_1", colnames(sim_data_mem_quest_2)[5:24], sep = "_")
+
+for (mem_quest in c(5:24)){
+  sim_data_mem_quest_2[,mem_quest] <- sample(as.double(unlist(sim_data_mem_quest_2[mem_quest])))
+} 
+
+## 8 type_2 questions
+sim_data_mem_quest_2 <- cbind(sim_data_mem_quest_2, replicate(8,sim_data_mem_quest_2$sim_mem_type_2))
+colnames(sim_data_mem_quest_2)[25:32] <- paste("sim_mem_type_2", colnames(sim_data_mem_quest_2)[25:32], sep = "_")
+
+for (mem_quest in c(25:32)){
+  sim_data_mem_quest_2[,mem_quest] <- sample(as.double(unlist(sim_data_mem_quest_2[mem_quest])))
+} 
+
+```
+
+
+
+```{r export to csv}
+write.csv(sim_data_morn_quest, file = "sim_data_morn_quest.csv")
+write.csv(sim_data_lec_quest, file = "sim_data_lec_quest.csv")
+write.csv(sim_data_mem_quest, file = "sim_data_mem_quest.csv")
+
+```
+
