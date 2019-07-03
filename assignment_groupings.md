@@ -1,6 +1,3 @@
-
-### Hackathon layout
-
 ### Assignment groups
 
 1. **Complete OSF preregistration form.**
