@@ -8,5 +8,9 @@ If you notice a violation of this Code of Conduct, contact one of
 - leonorebovy@gmail.com
 - mallett.remy@gmail.com
 
-### A special note about working collaboratively in GoogleDocs
+### Working collaboratively in GoogleDocs
 GoogleDocs is a nice collaborative tool, where multiple people can edit the same document in realtime. Please be mindful that your edits and deletes are not saved in an "older version," and so if uncertain, refrain from deleting others' writing by instead adding a comment to highlighted text. Also use the side chat to talk about quickly solvable issues.
+
+### Writing on the manuscript
+ - British English
+ - Citations in APA style
