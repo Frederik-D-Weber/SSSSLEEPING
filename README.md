@@ -16,8 +16,8 @@ All involved should be aware of the [Code of Conduct](CODE_OF_CONDUCT.md).
 
 
 ### Overview of collected data
-- Sleep EEG/ZMax, 3x 8h nights
-- Daytime EEG/ZMax, 4x 2h lectures
+- Sleep EEG/ZMax, 3x 6-9 h nights
+- Daytime EEG/ZMax, 4x 1 h lectures
 - Morning questionnaires about night's sleep (e.g., mood, dreaming), 3x
 - Afternoon questionnaires about lecture content (e.g., prior knowledge on lecture content), 3x
 - Demographics form, 1x
