@@ -24,9 +24,9 @@
 
 5. **Write behavioral analysis code.**
     
-    > For the analysis of the data we will use free and open-source software where possible (e.g. R, python, FieldTrip, SleepTrip/SpiSOP, JASP). We have outlines of the behavioral analysis written in [R Markdown]() to help get started.
+    > For the analysis of the data we will use free and open-source software where possible (e.g. R, python, FieldTrip, SleepTrip/SpiSOP, JASP). We have outlines of the behavioral analysis written in [R Markdown](./simulated_behavioural_data/SSSSLEEPINGd_simulation_beh_data.Rmd) to help get started.
 
-    1. Sample participant data available [here]().
+    1. Sample participant data available [here](./simulated_behavioural_data).
     2. This includes code for statistical analysis and visualizations.
 
 
@@ -34,7 +34,15 @@
 
     > Sleep data will be collected using the [Hypnodyne ZMax](http://hypnodynecorp.com/).
 
-    1. Sample participant data available [here]().
+    1. Sample participant data available [here](./simulated_behavioural_data).
     2. This includes code for statistical analysis and visualizations.
     3. Scoring and cleaning the sleep and wake data
     4. Detecting sleep spindles and slow waves.
+    
+
+7. **Score ZMax EEG data**
+
+    > ZMax data is scored based on spectral density method
+    
+    1. Freddy will give a demo on this.
+    2. There are also more video tutorials [here](http://hypnodynecorp.com/videotuts.php).
