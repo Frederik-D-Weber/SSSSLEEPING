@@ -5,7 +5,7 @@
 ### Reporting an Incident
 If you notice a violation of this Code of Conduct, contact one of
 - research 'ait' frederikweber.com
-- leonorebovy ait' gmail.com
+- leonorebovy 'ait' gmail.com
 
 ### Working collaboratively in Google Docs
 Google Docs is a nice collaborative tool, where multiple people can edit the same document in realtime (up to 100 persons). 
