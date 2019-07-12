@@ -71,7 +71,55 @@ end
 save('scorings', 'scorings');
 
 
-%% my new analysis
+%% plot the hypnograms
+%load('scorings');
+for iRecording = 1:numel(recordings)
+    recording = recordings{iRecording};
+    scoring = scorings{iRecording}; 
+% also plot event properties like amplitude and frequency for each event
+    cfg = [];
+    cfg.plotunknown        = 'no'; 
+    cfg.figureoutputfile   = [recording.name '.pdf'];
+    cfg.figureoutputformat = 'pdf';
+    figure_handle = st_hypnoplot(cfg, scoring);
+end
 
 
-blablaba
+
+
+
+%% caluculate the power
+stages = {{'N2', 'N3'},{'R'}};
+
+res_power_bins = {};
+res_power_bands = {};
+
+for iStages = 1:numel(stages)
+    for iRecording = 1:numel(recordings)
+        
+        recording = recordings{iRecording};
+        recording.name
+        % non-rem power in the first sleep cycle
+        cfg = [];
+        cfg.scoring     = scorings{iRecording};
+        cfg.stages      = stages{iStages}; % {'R'};
+        cfg.channel     = recording.eegchannels;
+        cfg.dataset     = recording.dataset;
+        cfg.foilim      = [0.5 30];
+        cfg.bands       = ...
+            {{'SWA', 0.5, 4},...
+            {'spindle', 10, 14}};
+        [res_power_bin, res_power_band] = st_power(cfg);
+
+        res_power_bins{iStages, iRecording} = res_power_bin;
+        res_power_bands{iStages, iRecording} = res_power_band;
+    end
+end
+
+for iStages = 1:numel(stages)
+    cfg = [];
+    cfg.prefix = 'ssssleeping';
+    cfg.infix  = 'first_attempt';
+    cfg.posfix = strjoin(stages{iStages},'_');
+    filelist_res_power = st_write_res(cfg, res_power_bins{iStages,:}, res_power_bands{iStages,:});
+end
