@@ -123,3 +123,17 @@ for iStages = 1:numel(stages)
     cfg.posfix = strjoin(stages{iStages},'_');
     filelist_res_power = st_write_res(cfg, res_power_bins{iStages,:}, res_power_bands{iStages,:});
 end
+
+% put the results together and write them out
+% [res_power_bins_appended] = st_append_res(res_power_bins{:});
+% [res_power_bands_appended] = st_append_res(res_power_bands{:});
+
+
+%% find the frequency power peaks, only one, e.g. for the 'fast spindles'
+cfg = [];
+cfg.peaknum = 1;
+[res_power_bins_appended_dataname_1] = st_append_res(res_power_bins{1,1:3});
+[res_power_bins_appended_dataname_2] = st_append_res(res_power_bins{1,4:6});
+
+[freqpeaks1_dataname_1, dummy] = st_freqpeak(cfg,res_power_bins_appended_dataname_1);
+[freqpeaks1_dataname_2, dummy] = st_freqpeak(cfg,res_power_bins_appended_dataname_2);
