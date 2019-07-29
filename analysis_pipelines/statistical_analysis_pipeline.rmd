@@ -1,0 +1,200 @@
+---
+title: "SSSSleping Statistical Analysis - (Hypothesis 1)"
+
+author: "Mariana Pereira"
+
+date: "July 26, 2019"
+
+output:
+  html_document: default
+---
+---
+This file is a vanilla version for the further statistical analysis of the paper.
+
+
+- Hypothesis 1: The amount of pre-lecture NREM and REM sleep in the prior predicts our main outcome variable of memory performance more than a week later (Niethard & Born, 2019). This will be inferred by a multiple regression analysis.
+
+### Loading sleep data and separating it into one of the three nights:
+
+
+``` {r chunk1} 
+num_subj = 2
+pp = paste(1:76) # Change to this paste(1:num_subj) once all the data is ready
+First_Night_sleep  <- matrix(nrow=num_subj, ncol=6)
+Second_Night_sleep <- matrix(nrow=num_subj, ncol=6)
+Third_Night_sleep  <- matrix(nrow=num_subj, ncol=6)
+
+first_night = "-s-1"
+sec_night = "-s-2"
+third_night = "-s-3"
+sleep_path = "C:\\Users\\marpere\\Documents\\SSSSleping\\Sleep_data\\"
+
+for (j in list.files(path = sleep_path, full.names = TRUE)){
+  s_descriptives = data.frame(read.csv(file=j)) 
+  files = s_descriptives[2]
+  for (i in 1:nrow(files)){
+    if (grepl(first_night, s_descriptives[i,2])){
+      counter = 1
+      NREM_N1 = s_descriptives[i,"N1_min"]
+      NREM_N2 = s_descriptives[i,"N2_min"]
+      NREM_N3 = s_descriptives[i,"N3_min"]
+      NREM = (sum(NREM_N1,NREM_N2,NREM_N3))
+      REM     = s_descriptives[i,"R_min"]
+      ID = substr(files[i,1], start = 3, stop = 4)
+      pp_ID = match(ID, pp)
+      if (all(is.na(First_Night_sleep))){
+        First_Night_sleep[counter,1] = as.character(pp_ID) # Supposed to be a participant ID
+        First_Night_sleep[counter,2] = NREM_N1
+        First_Night_sleep[counter,3] = NREM_N2
+        First_Night_sleep[counter,4] = NREM_N3
+        First_Night_sleep[counter,5] = NREM
+        First_Night_sleep[counter,6] = REM 
+      } else 
+        counter = counter+1
+        First_Night_sleep[counter,1] = as.character(pp_ID) # Supposed to be a participant ID
+        First_Night_sleep[counter,2] = NREM_N1
+        First_Night_sleep[counter,3] = NREM_N2
+        First_Night_sleep[counter,4] = NREM_N3
+        First_Night_sleep[counter,5] = NREM
+        First_Night_sleep[counter,6] = REM 
+          
+    } else if (grepl(sec_night, s_descriptives[i,2])){
+      counter = 1
+      NREM_N1 = s_descriptives[i,"N1_min"]
+      NREM_N2 = s_descriptives[i,"N2_min"]
+      NREM_N3 = s_descriptives[i,"N3_min"]
+      NREM = (sum(NREM_N1,NREM_N2,NREM_N3))
+      REM     = s_descriptives[i,"R_min"]
+      ID = substr(files[i,1], start = 3, stop = 4)
+      pp_ID = match(ID, pp)
+      if (all(is.na(Second_Night_sleep))){
+        Second_Night_sleep[counter,1] = as.character(pp_ID) # Supposed to be a participant ID
+        Second_Night_sleep[counter,2] = NREM_N1
+        Second_Night_sleep[counter,3] = NREM_N2
+        Second_Night_sleep[counter,4] = NREM_N3
+        Second_Night_sleep[counter,5] = NREM
+        Second_Night_sleep[counter,6] = REM 
+      } else 
+        counter = counter+1
+        Second_Night_sleep[counter,1] = as.character(pp_ID) # Supposed to be a participant ID
+        Second_Night_sleep[counter,2] = NREM_N1
+        Second_Night_sleep[counter,3] = NREM_N2
+        Second_Night_sleep[counter,4] = NREM_N3
+        Second_Night_sleep[counter,5] = NREM
+        Second_Night_sleep[counter,6] = REM 
+          
+    } else {
+      counter = 1
+      NREM_N1 = s_descriptives[i,"N1_min"]
+      NREM_N2 = s_descriptives[i,"N2_min"]
+      NREM_N3 = s_descriptives[i,"N3_min"]
+      NREM = (sum(NREM_N1,NREM_N2,NREM_N3))
+      REM     = s_descriptives[i,"R_min"]
+      ID = substr(files[i,1], start = 3, stop = 4)
+      pp_ID = match(ID, pp)
+      if (all(is.na(Third_Night_sleep))){
+        Third_Night_sleep[counter,1] = as.character(pp_ID) # Supposed to be a participant ID
+        Third_Night_sleep[counter,2] = NREM_N1
+        Third_Night_sleep[counter,3] = NREM_N2
+        Third_Night_sleep[counter,4] = NREM_N3
+        Third_Night_sleep[counter,5] = NREM
+        Third_Night_sleep[counter,6] = REM 
+      } else 
+        counter = counter+1
+        Third_Night_sleep[counter,1] = as.character(pp_ID) # Supposed to be a participant ID
+        Third_Night_sleep[counter,2] = NREM_N1
+        Third_Night_sleep[counter,3] = NREM_N2
+        Third_Night_sleep[counter,4] = NREM_N3
+        Third_Night_sleep[counter,5] = NREM
+        Third_Night_sleep[counter,6] = REM 
+    } 
+  } 
+}  
+print(First_Night_sleep)
+print(Second_Night_sleep)
+print(Third_Night_sleep)
+```
+
+
+```{r chunk2}
+Sleep_data <- data.frame("Participant_ID" = as.numeric(unlist(First_Night_sleep[,1])), 
+                         "NREM_N1_1" = as.numeric(unlist(First_Night_sleep[,2])), "NREM_N2_1" = as.numeric(unlist(First_Night_sleep[,3])),
+                         "NREM_N3_1" = as.numeric(unlist(First_Night_sleep[,4])), "NREM_1" = as.numeric(unlist(First_Night_sleep[,5])),
+                         "REM_1" = as.numeric(unlist(First_Night_sleep[,6])), 
+                         
+                         "NREM_N1_2" = as.numeric(unlist(Second_Night_sleep[,2])), "NREM_N2_2" = as.numeric(unlist(Second_Night_sleep[,3])),
+                         "NREM_N3_2" = as.numeric(unlist(Second_Night_sleep[,4])), "NREM_2" = as.numeric(unlist(Second_Night_sleep[,5])),
+                         "REM_2" = as.numeric(unlist(Second_Night_sleep[,6])),
+                         
+                         "NREM_N1_3" = as.numeric(unlist(Third_Night_sleep[,2])), "NREM_N2_3" = as.numeric(unlist(Third_Night_sleep[,3])),
+                         "NREM_N3_3" = as.numeric(unlist(Third_Night_sleep[,4])), "NREM_3" = as.numeric(unlist(Third_Night_sleep[,5])),
+                         "REM_3" = as.numeric(unlist(Third_Night_sleep[,6])), stringsAsFactors = FALSE)
+
+Sleep_data <- Sleep_data[order(Sleep_data["Participant_ID"]),] 
+str(Sleep_data)
+```
+```{r chunk3}
+df = Sleep_data[, c("NREM_1", "REM_1", "NREM_2", "REM_2", "NREM_3", "REM_3")] 
+boxplot(df, notch=TRUE, 
+        col=(c("lightgoldenrod","lightgoldenrod3", "orange", "orange3", "orangered", "orangered3")),
+        main="NREM and REM amount among the three nights", 
+        names = c("NREM", "REM", "NREM", "REM", "NREM", "REM"), xlab="Nights")
+```
+
+### Loading Behavioral data 
+```{r chunk4}
+behav_lec1 = "C:\\Users\\marpere\\Documents\\SSSSleping\\Behavioral_data\\memory_quest\\Lecture_1\\"
+behav_lec2 = "C:\\Users\\marpere\\Documents\\SSSSleping\\Behavioral_data\\memory_quest\\Lecture_2\\"
+behav_lec3 = "C:\\Users\\marpere\\Documents\\SSSSleping\\Behavioral_data\\memory_quest\\Lecture_3\\"
+
+for (i in list.files(path = behav_lec1, full.names = TRUE)){
+  quest_lec1 = data.frame(read.csv(file=i)) 
+  quest_lec1 <- quest_lec1[order(quest_lec1["sim_pp_id"]),]
+  questions_lec1 = quest_lec1[4:ncol(quest_lec1)]
+  performance_lec1 = data.frame(Means=rowMeans(quest_lec1[4:ncol(quest_lec1)]))
+}
+
+
+for (i in list.files(path = behav_lec2, full.names = TRUE)){
+  quest_lec2 = data.frame(read.csv(file=i)) 
+  quest_lec2 <- quest_lec2[order(quest_lec2["sim_pp_id"]),]
+  questions_lec2 = quest_lec2[4:ncol(quest_lec2)]
+  performance_lec2 = data.frame(Means=rowMeans(quest_lec2[4:ncol(quest_lec2)]))
+  }
+
+
+for (i in list.files(path = behav_lec3, full.names = TRUE)){
+  quest_lec3 = data.frame(read.csv(file=i)) 
+  quest_lec3 <- quest_lec3[order(quest_lec3["sim_pp_id"]),]
+  questions_lec3 = quest_lec3[4:ncol(quest_lec3)]
+  performance_lec3 = data.frame(Means=rowMeans(quest_lec3[4:ncol(quest_lec3)]))
+}
+
+Data = Sleep_data
+Data[ , "Perf_Lec1"] <- performance_lec1
+Data[ , "Perf_Lec2"] <- performance_lec2
+Data[ , "Perf_Lec3"] <- performance_lec3
+print(Data)
+```
+
+```{r chunk5}
+boxplot(Data[17:19],  col=(c("lightgoldenrod","orange", "orangered3")))
+```
+
+```{r chunk6}
+model1  <- lm(Perf_Lec2 ~ NREM_1, data = Data)
+summary(model1)
+```
+```{r chunk7}
+model2  <- lm(Perf_Lec2 ~ REM_1, data = Data)
+summary(model2)
+```
+
+```{r chunk8}
+model3  <- lm(Perf_Lec3 ~ NREM_2, data = Data)
+summary(model3)
+```
+```{r chunk9}
+model4  <- lm(Perf_Lec3 ~ REM_2, data = Data)
+summary(model2)
+```
