@@ -1,4 +1,3 @@
-
 %% initialization
 
 %%% add sleeptrip to the path, make sure FieldTrip or related toolboxes
@@ -8,26 +7,61 @@
 %%% load all the defaults of SleepTrip and FieldTrip
 st_defaults
 
-%% analyse our ssssleeeping sleep data
+%%% analyse the ssssleeeping sleep data
+
+%% create the recording and dataset information and design
 
 datanames = {'d-13','d-38'};
+excluded = {};
 
+design = {};
 datasets = {};
 scoringfiles = {};
+iRecording = 0;
 for iDataname = 1:numel(datanames)
     dataname = datanames{iDataname};
-    for iNight = 1:3
+    for iDay = 1:3
         % here we would need to exclude some nights
         %
         %
         %
-        datasets{iDataname,iNight}     = [dataname '-s-' num2str(iNight) '.zip'];
-        scoringfiles{iDataname,iNight} = [dataname '-s-' num2str(iNight) '.csv'];
+        datasetname = [dataname '-s-' num2str(iDay)];
+
+        if ~any(strcmp(datasetname,excluded))
+            iRecording = iRecording + 1;
+            datasets{iDataname,iDay}     = [datasetname '.zip'];
+            scoringfiles{iDataname,iDay} = [datasetname '.csv'];
+            design = cat(1,design,{iRecording,iDataname,iDay,datasetname});
+        end
     end
 end
 
-% create some subjects
+%create a design table and pack it into a dummy result to write it out
+design_table = cell2table(design);
+design_table.Properties.VariableNames = {'recordingnumber' 'datanamenumber' 'day' 'datasetname'};
+design_res = [];
+design_res.ori  = 'design';
+design_res.type = 'sleep_recordings';
+design_res.table = design_table;
+% export the design as if it would be a result
+cfg = [];
+cfg.prefix = 'ssssleeping';
+cfg.infix  = 'first_attempt';
+cfg.postfix = 'sleep_analysis_design';
+filelist_res_design = st_write_res(cfg, design_res);
 
+save('excluded', 'excluded')
+save('datasets', 'datasets')
+save('scoringfiles', 'scoringfiles')
+save('design', 'design')
+save('design_table', 'design_table')
+save('design_res', 'design_res')
+
+
+
+
+%% create the recording information
+load('datasets')
 nDatasets = numel(datasets);
 recordings = cell(1,nDatasets);
 for iDataset = 1:nDatasets
@@ -89,7 +123,7 @@ for iRecording = 1:numel(recordings)
     cfg = [];
     cfg.prefix = 'ssssleeping';
     cfg.infix  = 'first_attempt';
-    cfg.posfix = recording.name;
+    cfg.postfix = recording.name;
     filelist_res_sleepdescriptives = st_write_res(cfg, res_sleepdescriptive); 
         
     res_sleepdescriptives{iRecording} = res_sleepdescriptive;
@@ -105,25 +139,29 @@ save('res_sleepdescriptives', 'res_sleepdescriptives');
 cfg = [];
 cfg.prefix = 'ssssleeping';
 cfg.infix  = 'first_attempt';
-cfg.posfix = 'all_recordings';
+cfg.postfix = 'all_recordings';
 filelist_res_sleepdescriptives = st_write_res(cfg, res_sleepdescriptives_appended); 
 
 
-%% plot the hypnograms
-%load('scorings');
+%% plot the hypnograms, do not display the unknown sleep epochs
+load('recordings');
+load('scorings');
 for iRecording = 1:numel(recordings)
     recording = recordings{iRecording};
     scoring = scorings{iRecording}; 
-% also plot event properties like amplitude and frequency for each event
     cfg = [];
     cfg.plotunknown        = 'no'; 
+    cfg.plotexcluded       = 'no';
     cfg.figureoutputfile   = [recording.name '.pdf'];
     cfg.figureoutputformat = 'pdf';
     cfg.sleeponsetdef      = 'AASM';
     figure_handle = st_hypnoplot(cfg, scoring);
+    close(figure_handle)
 end
 
-%% caluculate the power
+%% caluculate the power and energy (density) in non-REM and REM sleep
+load('recordings');
+load('scorings');
 stages = {{'N2', 'N3'},{'R'}};
 
 res_power_bins = {};
@@ -155,36 +193,59 @@ for iStages = 1:numel(stages)
     cfg = [];
     cfg.prefix = 'ssssleeping';
     cfg.infix  = 'first_attempt';
-    cfg.posfix = strjoin(stages{iStages},'_');
+    cfg.postfix = strjoin(stages{iStages},'_');
     filelist_res_power_bins = st_write_res(cfg, res_power_bins{iStages,:});
     filelist_res_power_bands = st_write_res(cfg, res_power_bands{iStages,:});
 end
 
-% put the results together and write them out
-% [res_power_bins_appended] = st_append_res(res_power_bins{:});
-% [res_power_bands_appended] = st_append_res(res_power_bands{:});
-
+save('stages', 'stages')
 save('res_power_bins', 'res_power_bins');
 save('res_power_bands', 'res_power_bands');
 
 
+
 %% find the frequency power peaks, only one, e.g. for the 'fast spindles'
 load('res_power_bins')
+load('recordings')
+load('design_table')
+
+
+
+dataids = unique(design_table.datanamenumber)';
+spindle_freqpeaks_per_dataid = {};
+res_spindle_freqpeaks = cell();
+
+%iterate over all subjects by using the data id from the design matrix
+for iDataid = dataids
+    iRecordings = design_table.recordingnumber((design_table.datanamenumber == iDataid));
+    %all non-REM recordings
+    [res_power_bins_appended_dataname] = st_append_res(res_power_bins{1,iRecordings});
+    
+    cfg = [];
+    cfg.peaknum = 1;
+    [res_freqpeaks] = st_freqpeak(cfg,res_power_bins_appended_dataname);
+    res_freqpeaks.table.freqpeak1((res_freqpeaks.table.freqpeak1 < 9) | (res_freqpeaks.table.freqpeak1 > 16)) = NaN;
+    spindle_freqpeaks_per_dataid{iDataid} = res_freqpeaks.table.freqpeak1;
+    res_spindle_freqpeaks{iDataid} = res_freqpeaks;
+end
+
+[res_spindle_freqpeaks_appended] = st_append_res(res_spindle_freqpeaks{:});
+
+% export the design as if it would be a result
 cfg = [];
-cfg.peaknum = 1;
-[res_power_bins_appended_dataname_1] = st_append_res(res_power_bins{1,1:3});
-[res_power_bins_appended_dataname_2] = st_append_res(res_power_bins{1,4:6});
-
-[freqpeaks1_dataname_1, dummy] = st_freqpeak(cfg,res_power_bins_appended_dataname_1);
-[freqpeaks1_dataname_2, dummy] = st_freqpeak(cfg,res_power_bins_appended_dataname_2);
-
-%keep the results for later
-save('spindle_power_peak_freqs', 'freqpeaks1');
+cfg.prefix = 'ssssleeping';
+cfg.infix  = 'first_attempt';
+cfg.postfix = 'spindle_freqpeaks';
+filelist_res_design = st_write_res(cfg, res_spindle_freqpeaks_appended);
+   
+%keep the frequency peaks for later
+save('spindle_freqpeaks_per_dataid', 'spindle_freqpeaks_per_dataid');
+save('res_spindle_freqpeaks_appended', 'res_spindle_freqpeaks_appended');
 
 %% detect spindle on the frequency power peaks
 load('recordings')
 load('scorings')
-load('spindle_power_peak_freqs')
+load('res_spindle_freqpeaks_appended')
 
 res_spindles_channels = cell(1,numel(recordings));
 res_spindles_events = cell(1,numel(recordings));
@@ -195,7 +256,23 @@ for iRecording = 1:numel(recordings)
     cfg.scoring          = scorings{iRecording};
     cfg.stages           = {'N2', 'N3'}; % {'R'};
     cfg.channel          = recording.eegchannels;
-    cfg.centerfrequency  = freqpeaks1(iRecording);
+    cfg.minamplitude     = 5;
+    cfg.maxamplitude     = 50; %for a frontal channel
+    freqpeak = res_spindle_freqpeaks_appended.table.freqpeak1(iRecording);
+    resnum = res_spindle_freqpeaks_appended.table.resnum(iRecording);
+    
+    %no freqpeak, take the subject mean
+    if isnan(freqpeak)
+        freqpeak = mean(res_spindle_freqpeaks_appended.table.freqpeak1(res_spindle_freqpeaks_appended.table.resnum == resnum));
+    end
+    
+    %no freqpeak, take the group mean
+    if isnan(freqpeak)
+        freqpeak = nanmean(res_spindle_freqpeaks_appended.table.freqpeak1(:));
+    end
+    
+    cfg.centerfrequency  = freqpeak;
+    
     cfg.dataset          = recording.dataset;
     [res_spindles_channel, res_spindles_event, res_spindles_filter] = st_spindles(cfg);
     
@@ -211,8 +288,8 @@ save('res_spindles_events', 'res_spindles_events')
 [res_spindles_events_appended] = st_append_res(res_spindles_events{:});
 cfg = [];
 cfg.prefix = 'ssssleeping';
-cfg.infix  = recording.name;
-cfg.posfix = '';
+cfg.infix  = 'first_attempt';
+cfg.postfix = 'spindles_by_freqpeaks';
 filelist_res_spindles_appended = st_write_res(cfg, res_spindles_channels_appended, res_spindles_events_appended);
 
 
@@ -245,6 +322,7 @@ for iRecording = 1:numel(recordings)
     % also plot event properties like amplitude and frequency for each event
     cfg = [];
     cfg.plotunknown        = 'no'; 
+    cfg.plotexcluded       = 'no';
     cfg.figureoutputfile   = [recording.name '_events_spindles' '.pdf'];
     cfg.figureoutputformat = 'pdf';
     cfg.eventtimes  = {spindle_troughs_ch1';...
@@ -262,4 +340,5 @@ for iRecording = 1:numel(recordings)
     cfg.eventlabels = {['spd ' 'ampl ' ch1], ['spd ' 'ampl ' ch2], ...
                        ['spd ' 'freq ' ch1], ['spd ' 'freq ' ch2]};
     figure_handle = st_hypnoplot(cfg, scoring);
+    close(figure_handle);
 end
