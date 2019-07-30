@@ -213,7 +213,7 @@ load('design_table')
 
 dataids = unique(design_table.datanamenumber)';
 spindle_freqpeaks_per_dataid = {};
-res_spindle_freqpeaks = cell();
+res_spindle_freqpeaks = {};
 
 %iterate over all subjects by using the data id from the design matrix
 for iDataid = dataids
