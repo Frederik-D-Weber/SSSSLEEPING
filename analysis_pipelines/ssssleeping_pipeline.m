@@ -11,27 +11,72 @@ st_defaults
 
 %% create the recording and dataset information and design
 
-datanames = {'d-13','d-38'};
-excluded = {};
+% read in the data comnpletion sheet
+table_completion_long = readtable('data_completion_sheet_long_format.csv');
+
+% get an index of only the sleep related assessment type, modality and only
+% the things that are usable or partially usable and have an EEG channel
+% usable
+index_has_sleep_data_recordings = strcmp(table_completion_long.type,'sleep') & ...
+strcmp(table_completion_long.modality,'psg') & ...
+(strcmp(table_completion_long.channel,'EEG L') | strcmp(table_completion_long.channel,'EEG R')) & ...
+(strcmp(table_completion_long.assessment,'usable') | strcmp(table_completion_long.assessment,'partial'));
+
+% make a new table just for the sleep completion
+table_completion_long_sleep = table_completion_long(index_has_sleep_data_recordings,:);
+
+% extract the datanames
+datanames = unique(table_completion_long_sleep.datanumber);
+
+% the ones that do not have a psg recording or data quality is not
+% sufficient for any of the data
+iExcluded = ~ismember(table_completion_long.datanumber, datanames);
+excluded = unique(table_completion_long.datanumber(iExcluded));
+
+excluded = cat(1,excluded,{'d-4'; 'd-61'});
+
+nightissplit = {'d-12-s-2','d-61-s-3'};
+
 
 design = {};
 datasets = {};
 scoringfiles = {};
+eegchannels = {};
 iRecording = 0;
 for iDataname = 1:numel(datanames)
-    dataname = datanames{iDataname};
-    for iDay = 1:3
-        % here we would need to exclude some nights
-        %
-        %
-        %
-        datasetname = [dataname '-s-' num2str(iDay)];
-
-        if ~any(strcmp(datasetname,excluded))
-            iRecording = iRecording + 1;
-            datasets{iDataname,iDay}     = [datasetname '.zip'];
-            scoringfiles{iDataname,iDay} = [datasetname '.csv'];
-            design = cat(1,design,{iRecording,iDataname,iDay,datasetname});
+    datanumber = datanames{iDataname};
+    if ~any(strcmp(datanumber,excluded))
+        for iDay = 1:3
+            datasetname = [datanumber '-s-' num2str(iDay)];
+            
+            if ~any(strcmp(datasetname,nightissplit))
+                % not handled yet
+            end
+            
+            index_recording_channels = strcmp(table_completion_long_sleep.datanumber,datanumber) & ...
+                strcmp(table_completion_long_sleep.code,['s-' num2str(iDay)]);
+            
+            eegchannel_available = table_completion_long_sleep.channel(index_recording_channels);
+            
+            if ~isempty(eegchannel_available)
+                iRecording = iRecording + 1;
+                
+                datasets{iDataname,iDay}     = ['recordings' filesep datasetname '.zip'];
+                % check if the dataset exists where it should be
+                if exist(datasets{iDataname,iDay},'file') ~=2
+                    error([datasets{iDataname,iDay} ' does not exist.'])
+                end
+                
+                scoringfiles{iDataname,iDay} = ['recordings' filesep 'scoring' filesep datasetname '.csv'];
+                % check if the scoring exists where it should be
+                if exist(scoringfiles{iDataname,iDay},'file') ~=2
+                    error([scoringfiles{iDataname,iDay} ' does not exist.'])
+                end
+                
+                eegchannels{iDataname,iDay}  = eegchannel_available;
+                
+                design = cat(1,design,{iRecording,iDataname,iDay,datasetname});
+            end
         end
     end
 end
@@ -50,9 +95,11 @@ cfg.infix  = 'first_attempt';
 cfg.postfix = 'sleep_analysis_design';
 filelist_res_design = st_write_res(cfg, design_res);
 
-save('excluded', 'excluded')
+save('table_completion_long_sleep', 'table_completion_long_sleep')
 save('datasets', 'datasets')
+save('excluded', 'excluded')
 save('scoringfiles', 'scoringfiles')
+save('eegchannels','eegchannels')
 save('design', 'design')
 save('design_table', 'design_table')
 save('design_res', 'design_res')
@@ -62,29 +109,53 @@ save('design_res', 'design_res')
 
 %% create the recording information
 load('datasets')
-eegchannels = {{'EEG L', 'EEG R'}, {'EEG L', 'EEG R'}, {'EEG L', 'EEG R'}, ... 
-               {'EEG L', 'EEG R'}, {'EEG L', 'EEG R'}, {'EEG L', 'EEG R'}};
+load('scoringfiles')
+load('eegchannels')
+load('table_completion_long_sleep');
+% eegchannels = {{'EEG L', 'EEG R'}, {'EEG L', 'EEG R'}, {'EEG L', 'EEG R'}, ... 
+%                {'EEG L', 'EEG R'}, {'EEG L', 'EEG R'}, {'EEG L', 'EEG R'}};
 nDatasets = numel(datasets);
-recordings = cell(1,nDatasets);
+recordings = {};
+iRecording = 0;
 for iDataset = 1:nDatasets
+        % check if there is a recording present
+        if isempty(datasets{iDataset})
+            continue
+        end
         recording = [];
         % take the numer as subject name
-        recording.name               = datasets{iDataset};
+        [p f e] = fileparts(datasets{iDataset});
+
+        recording.name               = [f];
         recording.dataset            = datasets{iDataset};
         recording.scoringfile        = scoringfiles{iDataset};
+        recording.eegchannels        = eegchannels{iDataset};
 
         %these things are the same in all subjects
         recording.lightsoff          = 0;
         recording.scoringformat      = 'zmax'; % e.g. 'zmax' or 'spisop'
         recording.standard           = 'aasm'; % 'aasm' or 'rk'
         recording.scoring_dataoffset = 0;
-        recording.eegchannels        = eegchannels{iDataset};
         recording.noisechannels        = {'NOISE'};
         recording.orientationchannels  = {'dX','dY','dZ'};
+        
+        eegmontage         = [];
+        eegmontage.labelorg = {
+            'EEG L','EEG R'};
+        eegmontage.labelnew = {
+            'EEG L','EEG R'};
+        eegmontage.tra      = [
+            %'EEG L' 'EEG R' 
+              -1        0   % 'EEG L'
+               0       -1   % 'EEG R'
+               ];
+
+        recording.eegmontage = eegmontage;
 
         %save subject individually
-        save(['recording-' num2str(iDataset)],'recording');
-        recordings{iDataset} = recording;
+        iRecording = iRecording + 1;
+        save(['recording-' num2str(iRecording)],'recording');
+        recordings{iRecording} = recording;
 end
 %save all the subjects in a cell array
 save('recordings','recordings');
@@ -148,12 +219,22 @@ filelist_res_sleepdescriptives = st_write_res(cfg, res_sleepdescriptives_appende
 %% plot the hypnograms, do not display the unknown sleep epochs
 load('recordings');
 load('scorings');
+
+longest_scoring_minutes = 0;
+for iRecording = 1:numel(recordings)
+    scoring = scorings{iRecording};
+    scoring_length_minutes = numel(scoring.epochs)/2;
+    longest_scoring_minutes = max(longest_scoring_minutes,scoring_length_minutes);
+end
+
+% plot the scorings in a hypongram
 for iRecording = 1:numel(recordings)
     recording = recordings{iRecording};
     scoring = scorings{iRecording}; 
     cfg = [];
     cfg.plotunknown        = 'no'; 
     cfg.plotexcluded       = 'no';
+    cfg.timemin            = longest_scoring_minutes;
     cfg.figureoutputfile   = [recording.name '.pdf'];
     cfg.figureoutputformat = 'pdf';
     cfg.sleeponsetdef      = 'AASM';
@@ -170,10 +251,10 @@ res_power_bins = {};
 res_power_bands = {};
 
 for iStages = 1:numel(stages)
-    for iRecording = 1:numel(recordings)
+    for iRecording = 1:2
         
         recording = recordings{iRecording};
-        recording.name
+        recording.name % print the name
         % non-rem power in the first sleep cycle
         cfg = [];
         cfg.scoring     = scorings{iRecording};
@@ -185,19 +266,37 @@ for iStages = 1:numel(stages)
             {{'SWA', 0.5, 4},...
             {'spindle', 10, 14}};
         [res_power_bin, res_power_band] = st_power(cfg);
+        
+        cfg = [];
+        cfg.prefix = 'ssssleeping';
+        cfg.infix  = 'first_attempt';
+        
+        cfg.postfix = [ recording.name strjoin(stages{iStages},'_')];
+        
+        filelist_res_power = st_write_res(cfg, res_power_bin, res_power_band);
 
         res_power_bins{iStages, iRecording} = res_power_bin;
         res_power_bands{iStages, iRecording} = res_power_band;
     end
 end
 
+
+%load('res_power_bands');
+%load('res_power_bins');
+
 for iStages = 1:numel(stages)
+
+    % put the results together and write them out
+    [res_power_bins_appended] = st_append_res(res_power_bins{iStages,:});
+    [res_power_bands_appended] = st_append_res(res_power_bands{iStages,:});
+    
     cfg = [];
     cfg.prefix = 'ssssleeping';
     cfg.infix  = 'first_attempt';
     cfg.postfix = strjoin(stages{iStages},'_');
-    filelist_res_power_bins = st_write_res(cfg, res_power_bins{iStages,:});
-    filelist_res_power_bands = st_write_res(cfg, res_power_bands{iStages,:});
+    
+    filelist_res_power_bins = st_write_res(cfg, res_power_bins_appended);
+    filelist_res_power_bands = st_write_res(cfg, res_power_bands_appended);
 end
 
 save('stages', 'stages')
@@ -205,13 +304,10 @@ save('res_power_bins', 'res_power_bins');
 save('res_power_bands', 'res_power_bands');
 
 
-
 %% find the frequency power peaks, only one, e.g. for the 'fast spindles'
 load('res_power_bins')
 load('recordings')
 load('design_table')
-
-
 
 dataids = unique(design_table.datanamenumber)';
 spindle_freqpeaks_per_dataid = {};
@@ -254,6 +350,8 @@ res_spindles_events = cell(1,numel(recordings));
 
 for iRecording = 1:numel(recordings)
     recording = recordings{iRecording};
+    recording.name %print the recording name
+
     cfg = [];
     cfg.scoring          = scorings{iRecording};
     cfg.stages           = {'N2', 'N3'}; % {'R'};
@@ -294,11 +392,58 @@ cfg.infix  = 'first_attempt';
 cfg.postfix = 'spindles_by_freqpeaks';
 filelist_res_spindles_appended = st_write_res(cfg, res_spindles_channels_appended, res_spindles_events_appended);
 
+%% detect slow waves
+load('recordings')
+load('scorings')
+
+res_slowwaves_channels = cell(1,numel(recordings));
+res_slowwaves_events = cell(1,numel(recordings));
+
+for iRecording = 1:numel(recordings)
+    recording = recordings{iRecording};
+    recording.name %print the recording name
+    
+    cfg = [];
+    cfg.scoring          = scorings{iRecording};
+    cfg.stages           = {'N2', 'N3'}; % {'R'};
+    cfg.channel          = recording.eegchannels;
+    cfg.dataset          = recording.dataset;
+    
+    %inverse the channels because negative should be down state, 
+    %but in zmax recordings it is positive
+    cfg.montage          = recording.eegmontage; 
+    [res_slowwaves_channel, res_slowwaves_event, res_slowwaves_filter] = st_slowwaves(cfg);
+    
+    
+    res_slowwaves_channels{iRecording} = res_slowwaves_channel;
+    res_slowwaves_events{iRecording} = res_slowwaves_event;
+end
+
+save('res_slowwaves_channels', 'res_slowwaves_channels')
+save('res_slowwaves_events', 'res_slowwaves_events')
+
+% put the results together and write them out
+[res_slowwaves_channels_appended] = st_append_res(res_slowwaves_channels{:});
+[res_slowwaves_events_appended] = st_append_res(res_slowwaves_events{:});
+cfg = [];
+cfg.prefix = 'ssssleeping';
+cfg.infix  = 'first_attempt';
+cfg.postfix = 'slowwaves';
+filelist_res_spindles_appended = st_write_res(cfg, res_slowwaves_channels_appended, res_slowwaves_events_appended);
+
 
 %% plot spindles on a hypnogram per subject and save as pdf
 load('recordings')
 load('scorings')
 load('res_spindles_events')
+
+longest_scoring_minutes = 0;
+for iRecording = 1:numel(recordings)
+    scoring = scorings{iRecording};
+    scoring_length_minutes = numel(scoring.epochs)/2;
+    longest_scoring_minutes = max(longest_scoring_minutes,scoring_length_minutes);
+end
+
 for iRecording = 1:numel(recordings)
     recording = recordings{iRecording};
 
@@ -311,6 +456,7 @@ for iRecording = 1:numel(recordings)
     cfg = [];
     cfg.plotunknown        = 'no'; 
     cfg.plotexcluded       = 'no';
+    cfg.timemin            = longest_scoring_minutes;
     cfg.figureoutputfile   = [recording.name '_events_' event_abbrev '.pdf'];
     cfg.figureoutputformat = 'pdf';
     
@@ -325,13 +471,13 @@ for iRecording = 1:numel(recordings)
         
         % the trough with the larges amplitude of the spindle shall give its time
         % point, this is important for time-locked event related potentials
-        event_troughs_ch = res_event.table.seconds_trough_max(strcmp(res_spindles_event.table.channel,{ch}));
+        event_troughs_ch = res_event.table.seconds_trough_max(strcmp(res_event.table.channel,{ch}));
 
         % we can also get the amplitudes
-        event_amplitude_ch = res_event.table.amplitude_peak2trough_max(strcmp(res_spindles_event.table.channel,{ch}));
+        event_amplitude_ch = res_event.table.amplitude_peak2trough_max(strcmp(res_event.table.channel,{ch}));
     
         % ... or the frequency of each sleep spindle
-        event_frequency_ch = res_event.table.frequency_by_mean_pk_trgh_cnt_per_dur(strcmp(res_spindles_event.table.channel,{ch}));
+        event_frequency_ch = res_event.table.frequency_by_mean_pk_trgh_cnt_per_dur(strcmp(res_event.table.channel,{ch}));
     
         cfg.eventtimes  = cat(1,cfg.eventtimes,{event_troughs_ch'; ...
                                                 event_troughs_ch'});
@@ -383,12 +529,13 @@ wavelet_length = 4;
 
 pre_trial_seconds = 3;
 post_trial_seconds = 3;
-padding_buffer_seconds = wavelet_length*(1/freq_min)+1;
 
 freq_min = 0.5;
 freq_max = 20;
 freq_steps = 0.5;
 freq_time_steps = (pre_trial_seconds+post_trial_seconds)/(freq_max/freq_steps);
+padding_buffer_seconds = wavelet_length*(1/freq_min)+1;
+
 
 
 
@@ -412,87 +559,91 @@ for iRecording = 1:numel(recordings)
     res_event = res_spindles_events{iRecording};
     event_abbrev = 'spd';
     
+    % analysis is done by channel, because there is
     for iCh = 1:numel(recording.eegchannels)
         ch = recording.eegchannels{iCh};
         
         %events in one channel
         eventsSeconds = res_event.table.seconds_trough_max(strcmp(res_event.table.channel,{ch}));
         
-        %select only the one channel analysed
-        cfg = [];
-        cfg.channel = ch;
-        %cfg.latency = [60*60*1 60*60*2];
-        data_ch = ft_selectdata(cfg, data);
-        
-        % ERP
-        event_samples = eventsSeconds*data.fsample;
-        event_label = event_abbrev;
-        
-        padding_buffer_samples = padding_buffer_seconds*data.fsample;
-        pre_trial_samples = pre_trial_seconds*data.fsample;
-        post_trial_samples = post_trial_seconds*data.fsample;
-        
-        cfg     = [];
-        begsamples = event_samples-pre_trial_samples-padding_buffer_samples;
-        endsamples = event_samples+post_trial_samples+padding_buffer_samples;
-        offsets = repmat(-(pre_trial_samples+padding_buffer_samples),numel(event_samples),1);
-        trl = [begsamples, endsamples, offsets];
-        
-        % make sure the trial is using samples
-        trl = round(trl);
-        
-        % remove trials that overlap with the beginning of the file
-        sel = trl(:,1)>1;
-        trl = trl(sel,:);
-        
-        % remove trials that overlap with the end of the file
-        datalengthsamples = size(data.trial{1},2);
-        sel = trl(:,2)<datalengthsamples;
-        trl = trl(sel,:);
-        
-        ntrials = size(trl,1);
-        
-        cfg.trl = trl;
-        data_events = ft_redefinetrial(cfg, data_ch);
-        
-        save(['data_events-' event_abbrev '-' ch '-' num2str(iRecording)], 'data_events');
-
-        %average signal timelocked to the trough.
-        cfg        = [];
-        [timelock] = ft_timelockanalysis(cfg, data_events);
-        
-        cfg = [];
-        cfg.latency = [-pre_trial_seconds post_trial_seconds];
-        timelock = ft_selectdata(cfg,timelock);
-        
-        timelock.ntrials = ntrials;
-        timelock.event_label = event_label;
-        timelocks{iRecording,iCh} = timelock;
-        timelock = []; % in case the dataset does not fit in memory well.
-        
-        
-        %ERF
-        cfg               = [];
-        cfg.channel       = 'all';
-        cfg.method        = 'wavelet';
-        cfg.length        = wavelet_length;
-        cfg.foi           = freq_min:freq_steps:freq_max; 
-        cfg.toi           = [(-padding_buffer_seconds-pre_trial_seconds):freq_time_steps:(post_trial_seconds+padding_buffer_seconds)]; % 0.1 s steps
-        %cfg.keeptrials    = 'yes';
-        data_freq = ft_freqanalysis(cfg, data_events);
-        
-        
-        cfg = [];
-        cfg.latency = [-pre_trial_seconds post_trial_seconds];
-        data_freq = ft_selectdata(cfg,data_freq);
-        
-        data_freq.ntrials = ntrials;
-        data_freq.event_label = event_label;
-        erfs{iRecording,iCh} = data_freq;
-        
-        data_ch = []; % in case the dataset does not fit in memory well.
-        data_events = []; % in case the dataset does not fit in memory well.
-        data_freq = []; % in case the dataset does not fit in memory well.
+        %check if there are any events
+        if ~isempty(eventsSeconds)
+            %select only the one channel analysed
+            cfg = [];
+            cfg.channel = ch;
+            %cfg.latency = [60*60*1 60*60*2];
+            data_ch = ft_selectdata(cfg, data);
+            
+            % ERP
+            event_samples = eventsSeconds*data.fsample;
+            event_label = event_abbrev;
+            
+            padding_buffer_samples = padding_buffer_seconds*data.fsample;
+            pre_trial_samples = pre_trial_seconds*data.fsample;
+            post_trial_samples = post_trial_seconds*data.fsample;
+            
+            cfg     = [];
+            begsamples = event_samples-pre_trial_samples-padding_buffer_samples;
+            endsamples = event_samples+post_trial_samples+padding_buffer_samples;
+            offsets = repmat(-(pre_trial_samples+padding_buffer_samples),numel(event_samples),1);
+            trl = [begsamples, endsamples, offsets];
+            
+            % make sure the trial is using samples
+            trl = round(trl);
+            
+            % remove trials that overlap with the beginning of the file
+            sel = trl(:,1)>1;
+            trl = trl(sel,:);
+            
+            % remove trials that overlap with the end of the file
+            datalengthsamples = size(data.trial{1},2);
+            sel = trl(:,2)<datalengthsamples;
+            trl = trl(sel,:);
+            
+            ntrials = size(trl,1);
+            
+            cfg.trl = trl;
+            data_events = ft_redefinetrial(cfg, data_ch);
+            
+            save(['data_events-' event_abbrev '-' ch '-' num2str(iRecording)], 'data_events');
+            
+            %average signal timelocked to the trough.
+            cfg        = [];
+            [timelock] = ft_timelockanalysis(cfg, data_events);
+            
+            cfg = [];
+            cfg.latency = [-pre_trial_seconds post_trial_seconds];
+            timelock = ft_selectdata(cfg,timelock);
+            
+            timelock.ntrials = ntrials;
+            timelock.event_label = event_label;
+            timelocks{iRecording,iCh} = timelock;
+            timelock = []; % in case the dataset does not fit in memory well.
+            
+            
+            %ERF
+            cfg               = [];
+            cfg.channel       = 'all';
+            cfg.method        = 'wavelet';
+            cfg.length        = wavelet_length;
+            cfg.foi           = freq_min:freq_steps:freq_max;
+            cfg.toi           = [(-padding_buffer_seconds-pre_trial_seconds):freq_time_steps:(post_trial_seconds+padding_buffer_seconds)]; % 0.1 s steps
+            %cfg.keeptrials    = 'yes';
+            data_freq = ft_freqanalysis(cfg, data_events);
+            
+            
+            cfg = [];
+            cfg.latency = [-pre_trial_seconds post_trial_seconds];
+            data_freq = ft_selectdata(cfg,data_freq);
+            
+            data_freq.ntrials = ntrials;
+            data_freq.event_label = event_label;
+            erfs{iRecording,iCh} = data_freq;
+            
+            data_ch = []; % in case the dataset does not fit in memory well.
+            data_events = []; % in case the dataset does not fit in memory well.
+            data_freq = []; % in case the dataset does not fit in memory well.
+        end
         
     end
     data = []; % in case the dataset does not fit in memory well.
@@ -521,62 +672,64 @@ for iRecording = 1:numel(recordings)
         ch = recording.eegchannels{iCh};
         
         timelock = timelocks{iRecording,iCh};
-        
-        event_label = timelock.event_label;
-        timelock = rmfield(timelock, 'event_label');
-        ntrials = timelock.ntrials;
-        timelock = rmfield(timelock, 'ntrials');
 
-        %ch = timelock.label{1};
-        fh = figure;
-        cfg           = [];
-        cfg.xlim      = [time_min time_max];
-        cfg.linewidth = 2;
-        %cfg.parameter = 'avg'; % this should be mentioned, otherwise the function might be confused and gives errors
-        cfg.title = ['ERP time-locked to trough of ' event_label ' at ' ch ' n = ' num2str(ntrials)];
-        ft_singleplotER(cfg,timelock)
-        
-        fontsize = 0.2;
-        axh = gca;
-        %fh = gcf;
-        
-        
-        set(fh, 'color',[1 1 1]);
-        set(axh,'FontUnits','inches')
-        set(axh,'Fontsize',fontsize);
-        
-        ylabel(axh,'Signal [µV]');
-        xlabel(axh,'Time [s]');
-        set(axh, 'xTick', time_ticks);
-        set(axh, 'xTickLabel', time_tickLabels);
-        %set(axh, 'xMinorTick', 'on');
-        set(axh, 'TickDir','out');
-        set(axh, 'box', 'off')
-        set(axh, 'LineWidth',2)
-        set(axh, 'TickLength',[0.02 0.02]);
-        
-        figure_width = 10;     % Width in inches
-        figure_height = 6;    % Height in inches
-        
-        pos = get(fh, 'Position');
-        set(fh, 'Position', [pos(1) pos(2) figure_width*100, figure_height*100]); %<- Set size
-        
-        % Here we preserve the size of the image when we save it.
-        set(fh,'InvertHardcopy','on');
-        set(fh,'PaperUnits', 'inches');
-        papersize = get(fh, 'PaperSize');
-        left = (papersize(1)- figure_width)/2;
-        bottom = (papersize(2)- figure_height)/2;
-        myfiguresize = [left, bottom, figure_width, figure_height];
-        set(fh,'PaperPosition', myfiguresize);
-        set(fh,'PaperOrientation', 'portrait');
-        
-        saveas(fh, [recording.name '_ERP_' event_label '_' ch '.fig']);
-        print(fh,['-d' 'epsc'],['-r' '300'],[recording.name '_ERP_' event_label '_' ch '.eps']);
-        print(fh,['-d' 'pdf'],['-r' '300'],[recording.name '_ERP_' event_label '_' ch '.pdf']);
-        
-        close(fh);
-        
+        if ~isempty(timelock)
+            
+            event_label = timelock.event_label;
+            timelock = rmfield(timelock, 'event_label');
+            ntrials = timelock.ntrials;
+            timelock = rmfield(timelock, 'ntrials');
+            
+            %ch = timelock.label{1};
+            fh = figure;
+            cfg           = [];
+            cfg.xlim      = [time_min time_max];
+            cfg.linewidth = 2;
+            %cfg.parameter = 'avg'; % this should be mentioned, otherwise the function might be confused and gives errors
+            cfg.title = ['ERP time-locked to trough of ' event_label ' at ' ch ' n = ' num2str(ntrials)];
+            ft_singleplotER(cfg,timelock)
+            
+            fontsize = 0.2;
+            axh = gca;
+            %fh = gcf;
+            
+            
+            set(fh, 'color',[1 1 1]);
+            set(axh,'FontUnits','inches')
+            set(axh,'Fontsize',fontsize);
+            
+            ylabel(axh,'Signal [µV]');
+            xlabel(axh,'Time [s]');
+            set(axh, 'xTick', time_ticks);
+            set(axh, 'xTickLabel', time_tickLabels);
+            %set(axh, 'xMinorTick', 'on');
+            set(axh, 'TickDir','out');
+            set(axh, 'box', 'off')
+            set(axh, 'LineWidth',2)
+            set(axh, 'TickLength',[0.02 0.02]);
+            
+            figure_width = 10;     % Width in inches
+            figure_height = 6;    % Height in inches
+            
+            pos = get(fh, 'Position');
+            set(fh, 'Position', [pos(1) pos(2) figure_width*100, figure_height*100]); %<- Set size
+            
+            % Here we preserve the size of the image when we save it.
+            set(fh,'InvertHardcopy','on');
+            set(fh,'PaperUnits', 'inches');
+            papersize = get(fh, 'PaperSize');
+            left = (papersize(1)- figure_width)/2;
+            bottom = (papersize(2)- figure_height)/2;
+            myfiguresize = [left, bottom, figure_width, figure_height];
+            set(fh,'PaperPosition', myfiguresize);
+            set(fh,'PaperOrientation', 'portrait');
+            
+            saveas(fh, [recording.name '_ERP_' event_label '_' ch '.fig']);
+            print(fh,['-d' 'epsc'],['-r' '300'],[recording.name '_ERP_' event_label '_' ch '.eps']);
+            print(fh,['-d' 'pdf'],['-r' '300'],[recording.name '_ERP_' event_label '_' ch '.pdf']);
+            
+            close(fh);
+        end
     end
 end
 
@@ -602,64 +755,67 @@ for iRecording = 1:numel(recordings)
         
         data_freq = erfs{iRecording,iCh};
         
-        event_label = data_freq.event_label;
-        timelock = rmfield(data_freq, 'event_label');
-        ntrials = data_freq.ntrials;
-        timelock = rmfield(data_freq, 'ntrials');
+        if ~isempty(data_freq)
+            
+            event_label = data_freq.event_label;
+            timelock = rmfield(data_freq, 'event_label');
+            ntrials = data_freq.ntrials;
+            timelock = rmfield(data_freq, 'ntrials');
+            
+            %ch = timelock.label{1};
+            fh = figure;
+            cfg           = [];
+            cfg.xlim      = [time_min time_max];
 
-        %ch = timelock.label{1};
-        fh = figure;
-        cfg           = [];
-        cfg.xlim      = [time_min time_max];
-        cfg.linewidth = 2;
-        cfg.title = ['ERF time-locked to trough of ' event_label ' at ' ch ' n = ' num2str(ntrials)];
-        ft_singleplotTFR(cfg,data_freq)
-        
-        fontsize = 0.2;
-        axh = gca;
-        %fh = gcf;
-        
-        
-        set(fh, 'color',[1 1 1]);
-        set(axh,'FontUnits','inches')
-        set(axh,'Fontsize',fontsize);
-        
-        ylabel(axh,'Frequency [Hz]');
-        xlabel(axh,'Time [s]');
-        set(axh, 'xTick', time_ticks);
-        set(axh, 'xTickLabel', time_tickLabels);
-        %set(axh, 'xMinorTick', 'on');
-        set(axh, 'TickDir','out');
-        set(axh, 'box', 'off')
-        set(axh, 'LineWidth',2)
-        set(axh, 'TickLength',[0.02 0.02]);
-        
-        figure_width = 10;     % Width in inches
-        figure_height = 6;    % Height in inches
-        
-        pos = get(fh, 'Position');
-        set(fh, 'Position', [pos(1) pos(2) figure_width*100, figure_height*100]); %<- Set size
-        
-        % Here we preserve the size of the image when we save it.
-        set(fh,'InvertHardcopy','on');
-        set(fh,'PaperUnits', 'inches');
-        papersize = get(fh, 'PaperSize');
-        left = (papersize(1)- figure_width)/2;
-        bottom = (papersize(2)- figure_height)/2;
-        myfiguresize = [left, bottom, figure_width, figure_height];
-        set(fh,'PaperPosition', myfiguresize);
-        set(fh,'PaperOrientation', 'portrait');
-        
-        saveas(fh, [recording.name '_ERP_' event_label '_' ch '.fig']);
-        print(fh,['-d' 'epsc'],['-r' '300'],[recording.name '_ERP_' event_label '_' ch '.eps']);
-        print(fh,['-d' 'pdf'],['-r' '300'],[recording.name '_ERP_' event_label '_' ch '.pdf']);
-        
-        close(fh);
-        
+            cfg.linewidth = 2;
+            cfg.baseline = [time_min time_max];
+            cfg.baselinetype = 'relchange';
+            cfg.zlim      = [-1 1];
+
+    
+            cfg.title = ['ERF time-locked to trough of ' event_label ' at ' ch ' n = ' num2str(ntrials)];
+            ft_singleplotTFR(cfg,data_freq)
+            
+            fontsize = 0.2;
+            axh = gca;
+            %fh = gcf;
+            
+            
+            set(fh, 'color',[1 1 1]);
+            set(axh,'FontUnits','inches')
+            set(axh,'Fontsize',fontsize);
+            
+            ylabel(axh,'Frequency [Hz]');
+            xlabel(axh,'Time [s]');
+            set(axh, 'xTick', time_ticks);
+            set(axh, 'xTickLabel', time_tickLabels);
+            %set(axh, 'xMinorTick', 'on');
+            set(axh, 'TickDir','out');
+            set(axh, 'box', 'off')
+            set(axh, 'LineWidth',2)
+            set(axh, 'TickLength',[0.02 0.02]);
+            
+            figure_width = 10;     % Width in inches
+            figure_height = 6;    % Height in inches
+            
+            pos = get(fh, 'Position');
+            set(fh, 'Position', [pos(1) pos(2) figure_width*100, figure_height*100]); %<- Set size
+            
+            % Here we preserve the size of the image when we save it.
+            set(fh,'InvertHardcopy','on');
+            set(fh,'PaperUnits', 'inches');
+            papersize = get(fh, 'PaperSize');
+            left = (papersize(1)- figure_width)/2;
+            bottom = (papersize(2)- figure_height)/2;
+            myfiguresize = [left, bottom, figure_width, figure_height];
+            set(fh,'PaperPosition', myfiguresize);
+            set(fh,'PaperOrientation', 'portrait');
+            
+            saveas(fh, [recording.name '_ERF_' event_label '_' ch '.fig']);
+            print(fh,['-d' 'epsc'],['-r' '300'],[recording.name '_ERF_' event_label '_' ch '.eps']);
+            print(fh,['-d' 'pdf'],['-r' '300'],[recording.name '_ERF_' event_label '_' ch '.pdf']);
+            
+            close(fh);
+        end
     end
 end
-
-
-
-
-
