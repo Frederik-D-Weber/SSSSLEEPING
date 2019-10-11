@@ -251,7 +251,7 @@ res_power_bins = {};
 res_power_bands = {};
 
 for iStages = 1:numel(stages)
-    for iRecording = 1:2
+    for iRecording = 1:numel(recordings)
         
         recording = recordings{iRecording};
         recording.name % print the name
